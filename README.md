@@ -17,6 +17,25 @@ ProfitAudit is a production-oriented SaaS MVP built with Next.js App Router, Sup
 - Stripe subscriptions + webhooks
 - Vitest for deterministic scoring tests
 
+## Required environment variables
+Copy `.env.example` to `.env.local` and fill all values.
+
+### App
+- `NEXT_PUBLIC_APP_URL` – local/public app origin used for redirect URLs.
+
+### Supabase
+- `NEXT_PUBLIC_SUPABASE_URL` – Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` – Supabase anon public key.
+- `SUPABASE_SERVICE_ROLE_KEY` – service role key used by Stripe webhook sync.
+- `DATABASE_URL` – Postgres connection string for `npm run db:seed`.
+
+### Stripe
+- `STRIPE_SECRET_KEY` – Stripe secret key.
+- `STRIPE_WEBHOOK_SECRET` – Stripe webhook signing secret.
+- `STRIPE_PRICE_STARTER` – recurring Starter price ID.
+- `STRIPE_PRICE_GROWTH` – recurring Growth price ID.
+- `STRIPE_PRICE_AGENCY` – recurring Agency price ID.
+
 ## Local setup
 1. Install dependencies:
    ```bash
@@ -26,31 +45,59 @@ ProfitAudit is a production-oriented SaaS MVP built with Next.js App Router, Sup
    ```bash
    cp .env.example .env.local
    ```
-3. Run development server:
+3. Apply migrations in order:
+   - `db/migrations/001_init.sql`
+   - `db/migrations/002_launch_readiness.sql`
+4. Seed local/demo data:
+   ```bash
+   DATABASE_URL=postgres://... npm run db:seed
+   ```
+5. Run development server:
    ```bash
    npm run dev
    ```
 
-## Database setup
-1. Apply migrations in order:
-   - `db/migrations/001_init.sql`
-   - `db/migrations/002_launch_readiness.sql`
-2. Seed local/demo data:
-   ```bash
-   DATABASE_URL=postgres://... npm run db:seed
-   ```
+## Auth and billing behavior
+- Sign-up writes to `auth.users`, and database trigger `handle_auth_user_created` automatically creates/updates matching `public.users`.
+- Stripe checkout metadata includes `userId` + `plan`.
+- `checkout.session.completed` webhook upserts `public.subscriptions` and updates `public.users.plan`.
+- `customer.subscription.updated` and `customer.subscription.deleted` keep subscription status and user plan in sync.
 
 ## Seed files
-- `db/seed/001_demo_seed.sql` – baseline user, project, and audit demo records.
+- `db/seed/001_demo_seed.sql` – baseline user, project, audit, issue, and AI suggestion records.
 - `db/seed/002_launch_seed.sql` – launch analytics demo events.
-
-## Billing setup
-1. Create recurring Stripe prices for Starter, Growth, and Agency plans.
-2. Set env vars from `.env.example`.
-3. Add webhook endpoint: `/api/stripe/webhook`.
-4. Enable `checkout.session.completed` events.
 
 ## Testing
 ```bash
 npm run test
+npm run build
 ```
+
+## Launch checklist
+Use this before shipping any local/staging environment:
+
+1. **Environment and secrets**
+   - [ ] `.env.local` exists and all vars from `.env.example` are set.
+   - [ ] Stripe price IDs match intended Starter/Growth/Agency products.
+   - [ ] Webhook secret is from the active Stripe endpoint.
+
+2. **Database and RLS**
+   - [ ] `001_init.sql` and `002_launch_readiness.sql` both applied.
+   - [ ] RLS enabled on all public tables (`users`, `projects`, `audits`, `audit_issues`, `ai_suggestions`, `competitors`, `subscriptions`, `usage_events`).
+   - [ ] Auth trigger `on_auth_user_created` exists and inserts into `public.users`.
+
+3. **Billing flow**
+   - [ ] Start checkout from Settings → Billing while signed in.
+   - [ ] Confirm Stripe sends `checkout.session.completed` to `/api/stripe/webhook`.
+   - [ ] Verify `public.subscriptions` row exists and `public.users.plan` changed from `free`.
+   - [ ] Verify downgrade/cancel webhooks return users to `free` plan.
+
+4. **UI gating and data states**
+   - [ ] Free users only see limited issues/AI suggestions and locked Growth+ modules.
+   - [ ] Paid users can access full issue/AI sections.
+   - [ ] Dashboard/Audit render demo fallback, loading/error states, and empty states cleanly.
+
+5. **Preflight checks**
+   - [ ] `npm run test` passes.
+   - [ ] `npm run build` passes.
+   - [ ] `npm run dev` launches without manual code edits.

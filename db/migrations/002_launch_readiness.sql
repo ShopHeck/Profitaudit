@@ -8,6 +8,9 @@ create table if not exists public.usage_events (
   created_at timestamptz not null default now()
 );
 
+create unique index if not exists idx_users_auth_user_id on public.users(auth_user_id);
+create unique index if not exists idx_users_email on public.users(email);
+create unique index if not exists idx_subscriptions_provider_subscription_id on public.subscriptions(provider_subscription_id) where provider_subscription_id is not null;
 create index if not exists idx_projects_user_created on public.projects(user_id, created_at desc);
 create index if not exists idx_audits_project_created on public.audits(project_id, created_at desc);
 create index if not exists idx_audit_issues_audit_severity on public.audit_issues(audit_id, severity);
@@ -25,6 +28,26 @@ alter table public.audit_issues
 
 alter table public.ai_suggestions
   add constraint ai_suggestions_type_check check (type in ('title', 'meta', 'headline', 'cta'));
+
+create or replace function public.handle_auth_user_created()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (auth_user_id, email)
+  values (new.id, new.email)
+  on conflict (auth_user_id) do update set email = excluded.email;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute procedure public.handle_auth_user_created();
 
 alter table public.usage_events enable row level security;
 

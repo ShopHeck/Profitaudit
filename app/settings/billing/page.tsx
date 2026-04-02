@@ -11,7 +11,7 @@ export default async function BillingPage() {
         <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs uppercase tracking-wide text-slate-300">{data.currentPlan} plan</span>
       </div>
       <p className="mt-2 text-slate-300">Manage plan, payment status, and checkout links.</p>
-      <PricingGrid currentPlan={data.currentPlan} />
+      <PricingGrid currentPlan={data.currentPlan} userEmail={data.userEmail} userId={data.userId} />
     </div>
   );
 }

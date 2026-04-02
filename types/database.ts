@@ -76,6 +76,16 @@ export interface Database {
           created_at: string;
         };
       };
+      usage_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          event_type: string;
+          event_payload: Json;
+          created_at: string;
+        };
+      };
+
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
