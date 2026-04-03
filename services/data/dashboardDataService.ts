@@ -7,6 +7,8 @@ export interface DashboardData {
   projects: Project[];
   latestOverallScore: number;
   usingDemoData: boolean;
+  userId?: string;
+  userEmail?: string;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -23,7 +25,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     const { data: profile, error: profileError } = await supabase
       .from('users')
-      .select('id, plan')
+      .select('id, plan, email')
       .eq('auth_user_id', authUser.id)
       .single();
 
@@ -42,7 +44,9 @@ export async function getDashboardData(): Promise<DashboardData> {
         currentPlan: profile.plan,
         projects: [demoProject],
         latestOverallScore: demoAudit.overall_score,
-        usingDemoData: true
+        usingDemoData: true,
+        userId: profile.id,
+        userEmail: profile.email
       };
     }
 
@@ -59,7 +63,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       currentPlan: profile.plan,
       projects,
       latestOverallScore: auditError || !latestAudit ? demoAudit.overall_score : latestAudit.overall_score,
-      usingDemoData: false
+      usingDemoData: false,
+      userId: profile.id,
+      userEmail: profile.email
     };
   } catch {
     return getDemoDashboardData();

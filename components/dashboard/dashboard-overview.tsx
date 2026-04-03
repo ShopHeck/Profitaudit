@@ -44,15 +44,23 @@ export function DashboardOverview({ data }: { data: DashboardData }) {
           )}
         </div>
         <div className="mt-4 space-y-3">
-          {data.projects.map((project) => (
-            <div key={project.id} className="flex items-center justify-between rounded-xl border border-slate-800 p-4">
-              <div>
-                <p className="font-medium">{project.name}</p>
-                <p className="text-sm text-slate-400">{project.domain}</p>
+          {data.projects.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-700 p-4 text-sm text-slate-400">No projects yet. Run your first audit from the homepage.</p>
+          ) : (
+            data.projects.map((project) => (
+              <div key={project.id} className="flex items-center justify-between rounded-xl border border-slate-800 p-4">
+                <div>
+                  <p className="font-medium">{project.name}</p>
+                  <p className="text-sm text-slate-400">{project.domain}</p>
+                </div>
+                {data.usingDemoData ? (
+                  <Link href="/audit/audit_demo_example_home"><Button>Open demo audit</Button></Link>
+                ) : (
+                  <Button disabled variant="secondary">Audit route coming soon</Button>
+                )}
               </div>
-              <Link href="/audit/audit_demo_example_home"><Button>Open latest audit</Button></Link>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Card>
 
